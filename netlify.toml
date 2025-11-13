@@ -1,9 +1,11 @@
-[build]
-  # Comando para construir tu proyecto (Vite)
-  command = "npm run build"
-  # Carpeta que Netlify debe publicar
-  publish = "dist"
 
-[functions]
-  # Carpeta donde están tus funciones serverless
-  directory = "netlify/functions"
+[build]
+  command = "npm run build"
+  publish = "dist"
+  functions = "netlify/functions"
+
+# Opcional pero recomendado: redirige cualquier ruta desconocida al index.html (SPA)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
