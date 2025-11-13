@@ -1,10 +1,8 @@
-// netlify/functions/chatgpt.js
 const fetch = require("node-fetch");
 
-exports.handler = async function (event, context) {
+exports.handler = async (event, context) => {
   try {
     const body = JSON.parse(event.body);
-
     const prompt = `
       Idioma: ${body.idioma}
       Problema: ${body.problema}
@@ -23,7 +21,7 @@ exports.handler = async function (event, context) {
         "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "gpt-3.5-turbo",
         messages: [{ role: "user", content: prompt }],
       }),
     });
@@ -33,7 +31,8 @@ exports.handler = async function (event, context) {
     return {
       statusCode: 200,
       body: JSON.stringify({
-        respuesta: data.choices?.[0]?.message?.content || "No hay respuesta",
+        respuesta:
+          data.choices?.[0]?.message?.content || "No se recibió respuesta de OpenAI.",
       }),
     };
   } catch (err) {

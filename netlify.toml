@@ -1,0 +1,9 @@
+[build]
+  # Comando para construir tu proyecto (Vite)
+  command = "npm run build"
+  # Carpeta que Netlify debe publicar
+  publish = "dist"
+
+[functions]
+  # Carpeta donde están tus funciones serverless
+  directory = "netlify/functions"
