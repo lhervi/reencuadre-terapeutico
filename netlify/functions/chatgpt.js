@@ -1,8 +1,10 @@
-import fetch from "node-fetch";
+// netlify/functions/chatgpt.js
+const fetch = require("node-fetch");
 
-export async function handler(event, context) {
+exports.handler = async function (event, context) {
   try {
     const body = JSON.parse(event.body);
+
     const prompt = `
       Idioma: ${body.idioma}
       Problema: ${body.problema}
@@ -18,23 +20,27 @@ export async function handler(event, context) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
+        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "gpt-3.5-turbo",
-        messages: [{ role: "user", content: prompt }]
-      })
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+      }),
     });
 
     const data = await response.json();
+
     return {
       statusCode: 200,
-      body: JSON.stringify({ respuesta: data.choices?.[0]?.message?.content || "No hay respuesta" })
+      body: JSON.stringify({
+        respuesta: data.choices?.[0]?.message?.content || "No hay respuesta",
+      }),
     };
   } catch (err) {
+    console.error("Error en función chatgpt:", err);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: err.message })
+      body: JSON.stringify({ error: err.message }),
     };
   }
-}
+};
