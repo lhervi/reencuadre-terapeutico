@@ -1,20 +1,18 @@
-exports.handler = async (event, context) => {
+exports.handler = async function (event, context) {
   try {
     const body = JSON.parse(event.body);
 
-    // Construimos el prompt con la información recibida del frontend
     const prompt = `
       Idioma: ${body.idioma}
       Problema: ${body.problema}
       Criticidad: ${body.criticidad}
       Frecuencia: ${body.frecuencia}
       Tiempo: ${body.tiempo}
-      Emociones: ${Array.isArray(body.emociones) ? body.emociones.join(", ") : body.emociones}
+      Emociones: ${body.emociones.join(", ")}
       
       Aplica los marcos de reencuadre terapéutico y devuelve la respuesta detallada.
     `;
 
-    // Usamos el fetch global (no node-fetch)
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -27,24 +25,26 @@ exports.handler = async (event, context) => {
       })
     });
 
-    const data = await response.json();
-
-    // Verificamos si hubo un error desde la API
+    // Si la API de OpenAI da error, lo registramos
     if (!response.ok) {
-      console.error("Error from OpenAI API:", data);
-      throw new Error(data.error?.message || "Error desconocido desde OpenAI API");
+      const text = await response.text();
+      console.error("Error de OpenAI:", text);
+      return {
+        statusCode: response.status,
+        body: JSON.stringify({ error: "Error al comunicarse con OpenAI", details: text })
+      };
     }
 
-    // Devolvemos la respuesta al frontend
+    const data = await response.json();
+
     return {
       statusCode: 200,
       body: JSON.stringify({
-        respuesta: data.choices?.[0]?.message?.content || "No hay respuesta generada."
+        respuesta: data.choices?.[0]?.message?.content || "No hay respuesta"
       })
     };
-
   } catch (err) {
-    console.error("Error en función chatgpt:", err);
+    console.error("Error en función:", err);
     return {
       statusCode: 500,
       body: JSON.stringify({ error: err.message })
