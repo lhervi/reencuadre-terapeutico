@@ -1,71 +1,49 @@
-// netlify/functions/chatgpt.js
-
-// Netlify Functions usan CommonJS
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-
-exports.handler = async function(event, context) {
-  if (!OPENAI_API_KEY) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: "API Key no configurada en variables de entorno." })
-    };
-  }
-
-  let body;
+// chatgpt.js (CommonJS, Node 18+ soporta fetch global)
+exports.handler = async function (event, context) {
   try {
-    body = JSON.parse(event.body);
-  } catch (err) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ error: "Body inválido: debe ser JSON" })
-    };
-  }
+    const body = JSON.parse(event.body);
 
-  const prompt = body.prompt;
-  if (!prompt) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ error: "No se recibió prompt" })
-    };
-  }
+    const prompt = `
+      Idioma: ${body.idioma || "es"}
+      Problema: ${body.problema}
+      Criticidad: ${body.criticidad || "media"}
+      Frecuencia: ${body.frecuencia || "diaria"}
+      Tiempo: ${body.tiempo || "indefinido"}
+      Emociones: ${(body.emociones || []).join(", ")}
 
-  try {
-    // Usando fetch global de Node 18+
+      Aplica los marcos de reencuadre terapéutico y devuelve la respuesta detallada.
+    `;
+
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${OPENAI_API_KEY}`
+        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
       },
       body: JSON.stringify({
         model: "gpt-3.5-turbo",
         messages: [{ role: "user", content: prompt }],
-        temperature: 0.7
-      })
+      }),
     });
 
-    // Validar que la respuesta sea JSON
-    const data = await response.json();
-
-    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+    if (!response.ok) {
+      const text = await response.text();
       return {
-        statusCode: 500,
-        body: JSON.stringify({ error: "Respuesta inválida de OpenAI" })
+        statusCode: response.status,
+        body: JSON.stringify({ error: `OpenAI API error: ${text}` }),
       };
     }
 
-    const answer = data.choices[0].message.content;
-
+    const data = await response.json();
     return {
       statusCode: 200,
-      body: JSON.stringify({ respuesta: answer })
+      body: JSON.stringify({ respuesta: data.choices?.[0]?.message?.content || "No hay respuesta" }),
     };
 
   } catch (err) {
-    console.error("Error en la función chatgpt:", err);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: err.message })
+      body: JSON.stringify({ error: err.message }),
     };
   }
 };

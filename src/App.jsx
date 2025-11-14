@@ -1,87 +1,106 @@
-import { useState, useEffect } from "react";
-import EmocionesSelector from "./EmocionesSelector";
-import { generarRespuesta } from "./api";
+import { useState } from "react";
 
 export default function App() {
-  const [problema, setProblema] = useState("");
-  const [criticidad, setCriticidad] = useState(3);
-  const [frecuencia, setFrecuencia] = useState("constante");
-  const [tiempo, setTiempo] = useState("actual");
-  const [emocionesSeleccionadas, setEmocionesSeleccionadas] = useState([]);
-  const [respuesta, setRespuesta] = useState("");
-  const [darkMode, setDarkMode] = useState(false);
-  const [idioma, setIdioma] = useState("es"); // 'es' por defecto
+  const [provider, setProvider] = useState("openai"); // Default
+  const [prompt, setPrompt] = useState("");
+  const [response, setResponse] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleGenerar = async () => {
-    if (!problema.trim()) return;
-    const prompt = {
-      problema,
-      criticidad,
-      frecuencia,
-      tiempo,
-      emociones: emocionesSeleccionadas,
-      idioma
-    };
-    const res = await generarRespuesta(prompt);
-    setRespuesta(res);
+  const handleSend = async () => {
+    if (!prompt.trim()) return;
+
+    if (loading) return; // Evitar multiclícks
+
+    setLoading(true);
+    setError("");
+    setResponse("");
+
+    try {
+      const res = await fetch("/.netlify/functions/chatgpt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt, provider }),
+      });
+
+      const data = await res.json();
+
+      console.log("📌 RAW RESPONSE:", data);
+
+      if (!res.ok) {
+        setError(
+          data.error ||
+            `Error inesperado (${res.status}): verifica la consola y las API keys.`
+        );
+        return;
+      }
+
+      setResponse(data.respuesta || "(Respuesta vacía)");
+    } catch (err) {
+      console.error("🔥 Network error:", err);
+      setError("No se pudo conectar al servidor. Revisa la consola.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  useEffect(() => {
-    if (darkMode) document.body.classList.add("dark");
-    else document.body.classList.remove("dark");
-  }, [darkMode]);
-
   return (
-    <div className="app-container">
-      <header>
-        <h1>Terapia Online con IA</h1>
-        <div className="controls">
-          <button onClick={() => setDarkMode(!darkMode)}>
-            {darkMode ? "🌞 Claro" : "🌙 Oscuro"}
-          </button>
-          <button onClick={() => setIdioma(idioma === "es" ? "en" : "es")}>
-            {idioma === "es" ? "🇬🇧 English" : "🇪🇸 Español"}
-          </button>
+    <div className="min-h-screen bg-gray-50 p-6 flex justify-center">
+      <div className="w-full max-w-2xl bg-white shadow-md rounded-lg p-6">
+
+        {/* HEADER */}
+        <h1 className="text-2xl font-bold mb-4 text-gray-700">
+          Reencuadre Terapéutico (Beta)
+        </h1>
+
+        {/* SELECTOR DE PROVEEDOR */}
+        <div className="mb-4">
+          <label className="block text-gray-600 font-semibold mb-1">
+            Seleccionar IA
+          </label>
+          <select
+            value={provider}
+            onChange={(e) => setProvider(e.target.value)}
+            className="w-full border rounded px-3 py-2 bg-white"
+          >
+            <option value="openai">OpenAI – GPT-4o Mini</option>
+            <option value="gemini">Gemini – Pro / Flash</option>
+          </select>
         </div>
-      </header>
 
-      <div className="inputs">
+        {/* PROMPT */}
         <textarea
-          placeholder="Describe tu problema..."
-          value={problema}
-          onChange={(e) => setProblema(e.target.value)}
-        />
-        <label>Criticidad: {criticidad}</label>
-        <input
-          type="range"
-          min="1"
-          max="5"
-          value={criticidad}
-          onChange={(e) => setCriticidad(parseInt(e.target.value))}
-        />
-        <label>Frecuencia:</label>
-        <select value={frecuencia} onChange={(e) => setFrecuencia(e.target.value)}>
-          <option value="constante">Constante</option>
-          <option value="esporadico">Esporádico</option>
-        </select>
-        <label>Tiempo:</label>
-        <select value={tiempo} onChange={(e) => setTiempo(e.target.value)}>
-          <option value="pasado">Pasado</option>
-          <option value="actual">Actual</option>
-          <option value="futuro">Futuro</option>
-        </select>
-
-        <EmocionesSelector
-          emocionesSeleccionadas={emocionesSeleccionadas}
-          setEmocionesSeleccionadas={setEmocionesSeleccionadas}
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          placeholder="Escribe aquí tu consulta..."
+          className="w-full border rounded px-3 py-2 mb-4 h-32"
         />
 
-        <button className="generate-btn" onClick={handleGenerar}>
-          Generar Respuesta
+        {/* BOTON */}
+        <button
+          onClick={handleSend}
+          disabled={loading}
+          className={`w-full py-2 rounded text-white font-semibold ${
+            loading ? "bg-gray-400" : "bg-blue-600 hover:bg-blue-700"
+          }`}
+        >
+          {loading ? "Procesando..." : "Enviar"}
         </button>
-      </div>
 
-      {respuesta && <div className="respuesta-container">{respuesta}</div>}
+        {/* ERROR */}
+        {error && (
+          <div className="mt-4 p-3 bg-red-100 border border-red-300 text-red-700 rounded">
+            ⚠️ {error}
+          </div>
+        )}
+
+        {/* RESPUESTA */}
+        {response && (
+          <div className="mt-4 p-3 bg-green-50 border border-green-200 text-gray-700 rounded whitespace-pre-line">
+            {response}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
